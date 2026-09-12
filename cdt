@@ -1,0 +1,250 @@
+("Frame"local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Проверка устройства (Флаг для мобильных)
+local IsMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+
+---------------------------------------------------------------------------------------
+-- ⚙️ НАСТРОЙКИ И СОСТОЯНИЕ (STATE)
+---------------------------------------------------------------------------------------
+local Config = {
+    Active = false,
+    Language = "RU", -- По умолчанию "RU" или "EN"
+    MaxSpeed = 300,
+    Acceleration = 50, -- Множитель крутящего момента / ускорения
+    BoostKey = Enum.KeyCode.E, -- Клавишный бинд по умолчанию
+    BindingMode = false
+}
+
+-- Локализация (Перевод текста)
+local Localization = {
+    RU = {
+        Title = "ВЕЗДЕХОД ОТ Skazka",
+        MainToggle = "АКТИВИРОВАТЬ СКРИПТ",
+        MaxSpeedText = "Макс. Скорость: ",
+        AccelText = "Разгон (Сила): ",
+        InstantBoost = "🚀 МГНОВЕННЫЙ БУСТ",
+        BindText = "Бинд буста: ",
+        MobileBtn = "💥 БУСТ",
+        LangBtn = "🌐 Язык: RU"
+    },
+    EN = {
+        Title = "VEHICLE SYSTEM FROM Skazka",
+        MainToggle = "ENABLE HACK",
+        MaxSpeedText = "Max Speed: ",
+        AccelText = "Acceleration: ",
+        InstantBoost = "🚀 INSTANT BOOST",
+        BindText = "Boost Bind: ",
+        MobileBtn = "💥 BOOST",
+        LangBtn = "🌐 Lang: EN"
+    }
+}
+
+---------------------------------------------------------------------------------------
+-- 🛠️ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ КОР-ЛОГИКИ
+---------------------------------------------------------------------------------------
+local function getVehicleSeat()
+    local character = LocalPlayer.Character
+    if character and character:FindFirstChild("Humanoid") then
+        local seat = character.Humanoid.SeatPart
+        if seat and seat:IsA("VehicleSeat") then
+            return seat
+        end
+    end
+    return nil
+end
+
+-- Функция мгновенного пинка (Буста) вперед
+local function executeInstantBoost()
+    if not Config.Active then return end
+    local seat = getVehicleSeat()
+    if seat then
+        seat.AssemblyLinearVelocity = seat.CFrame.LookVector * (Config.MaxSpeed * 1.2)
+    end
+end
+
+---------------------------------------------------------------------------------------
+-- 🎨 СОЗДАНИЕ НЕОНОВОГО ИНТЕРФЕЙСА (GUI)
+---------------------------------------------------------------------------------------
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "PremiumVehicleGui"
+ScreenGui.Parent = game:GetService("CoreGui")
+ScreenGui.ResetOnSpawn = false
+
+-- Главный Фрейм
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 320, 0, 420)
+MainFrame.Position = UDim2.new(0.1, 0, 0.2, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 16)
+MainCorner.Parent = MainFrame
+
+-- Обводка (Glow / Неоновый эффект)
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Color = Color3.fromRGB(0, 212, 255)
+UIStroke.Thickness = 2
+UIStroke.Transparency = 0.3
+UIStroke.Parent = MainFrame
+
+-- Заголовок меню
+local Header = Instance.new("SkazkaHub")
+Header.Size = UDim2.new(1, 0, 0, 45)
+Header.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
+Header.TextColor3 = Color3.fromRGB(255, 255, 255)
+Header.Font = Enum.Font.GothamBold
+Header.TextSize = 16
+Header.Parent = MainFrame
+
+local HeaderCorner = Instance.new("UICorner")
+HeaderCorner.CornerRadius = UDim.new(0, 16)
+HeaderCorner.Parent = Header
+
+-- Кнопка смены языка в шапке
+local LangButton = Instance.new("Languagle\Язык")
+LangButton.Size = UDim2.new(0, 100, 0, 30)
+LangButton.Position = UDim2.new(1, -110, 0, 7)
+LangButton.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+LangButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+LangButton.Font = Enum.Font.Gotham
+LangButton.TextSize = 12
+LangButton.Parent = Header
+Instance.new("UICorner", LangButton).CornerRadius = UDim.new(0, 6)
+
+-- 1. ТУМБЛЕР (Главный переключатель Вкл/Выкл)
+local ToggleButton = Instance.new("On|Off")
+ToggleButton.Size = UDim2.new(0.9, 0, 0, 45)
+ToggleButton.Position = UDim2.new(0.05, 0, 0, 60)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(244, 67, 54) -- Красный (выключен)
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.Font = Enum.Font.GothamBold
+ToggleButton.TextSize = 14
+ToggleButton.Parent = MainFrame
+Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(0, 8)
+
+-- 2. СЛАЙДЕР СКОРОСТИ
+local SpeedLabel = Instance.new("Slider")
+SpeedLabel.Size = UDim2.new(0.9, 0, 0, 20)
+SpeedLabel.Position = UDim2.new(0.05, 0, 0, 120)
+SpeedLabel.BackgroundTransparency = 1
+SpeedLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
+SpeedLabel.Font = Enum.Font.Gotham
+SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
+SpeedLabel.Parent = MainFrame
+
+local SpeedSliderFrame = Instance.new("Frame")
+SpeedSliderFrame.Size = UDim2.new(0.9, 0, 0, 10)
+SpeedSliderFrame.Position = UDim2.new(0.05, 0, 0, 145)
+SpeedSliderFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+SpeedSliderFrame.Parent = MainFrame
+Instance.new("UICorner", SpeedSliderFrame)
+
+local SpeedSliderFill = Instance.new("Frame")
+SpeedSliderFill.Size = UDim2.new(0.3, 0, 1, 0) -- Дефолт позиция ползунка
+SpeedSliderFill.BackgroundColor3 = Color3.fromRGB(0, 212, 255)
+SpeedSliderFill.Parent = SpeedSliderFrame
+Instance.new("UICorner", SpeedSliderFill)
+
+local SpeedSliderBtn = Instance.new("TextButton")
+SpeedSliderBtn.Size = UDim2.new(0, 18, 0, 18)
+SpeedSliderBtn.Position = UDim2.new(0.3, -9, 0.5, -9)
+SpeedSliderBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+SpeedSliderBtn.Text = ""
+SpeedSliderBtn.Parent = SpeedSliderFrame
+Instance.new("UICorner", SpeedSliderBtn).CornerRadius = UDim.new(1, 0)
+
+-- 3. СЛАЙДЕР РАЗГОНА
+local AccelLabel = Instance.new("разгон")
+AccelLabel.Size = UDim2.new(0.9, 0, 0, 20)
+AccelLabel.Position = UDim2.new(0.05, 0, 0, 175)
+AccelLabel.BackgroundTransparency = 1
+AccelLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
+AccelLabel.Font = Enum.Font.Gotham
+AccelLabel.TextXAlignment = Enum.TextXAlignment.Left
+AccelLabel.Parent = MainFrame
+
+local AccelSliderFrame = Instance.new)
+AccelSliderFrame.Size = UDim2.new(0.9, 0, 0, 10)
+AccelSliderFrame.Position = UDim2.new(0.05, 0, 0, 200)
+AccelSliderFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+AccelSliderFrame.Parent = MainFrame
+Instance.new("UICorner", AccelSliderFrame)
+
+local AccelSliderFill = Instance.new("Frame")
+AccelSliderFill.Size = UDim2.new(0.5, 0, 1, 0)
+AccelSliderFill.BackgroundColor3 = Color3.fromRGB(0, 212, 255)
+AccelSliderFill.Parent = AccelSliderFrame
+Instance.new("UICorner", AccelSliderFill)
+
+local AccelSliderBtn = Instance.new("TextButton")
+AccelSliderBtn.Size = UDim2.new(0, 18, 0, 18)
+AccelSliderBtn.Position = UDim2.new(0.5, -9, 0.5, -9)
+AccelSliderBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+AccelSliderBtn.Text = ""
+AccelSliderBtn.Parent = AccelSliderFrame
+Instance.new("UICorner", AccelSliderBtn).CornerRadius = UDim.new(1, 0)
+
+-- 4. КНОПКА МГНОВЕННОГО БУСТА ДЛЯ ПК
+local BoostButton = Instance.new("TextButton")
+BoostButton.Size = UDim2.new(0.9, 0, 0, 45)
+BoostButton.Position = UDim2.new(0.05, 0, 0, 235)
+BoostButton.BackgroundColor3 = Color3.fromRGB(0, 150, 136)
+BoostButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+BoostButton.Font = Enum.Font.GothamBold
+BoostButton.TextSize = 14
+BoostButton.Parent = MainFrame
+Instance.new("UICorner", BoostButton).CornerRadius = UDim.new(0, 8)
+
+-- 5. БИНД КЛАВИШИ
+local BindButton = Instance.new("TextButton")
+BindButton.Size = UDim2.new(0.9, 0, 0, 45)
+BindButton.Position = UDim2.new(0.05, 0, 0, 295)
+BindButton.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+BindButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+BindButton.Font = Enum.Font.Gotham
+BindButton.TextSize = 14
+BindButton.Parent = MainFrame
+Instance.new("UICorner", BindButton).CornerRadius = UDim.new(0, 8)
+
+-- 📱 МОБИЛЬНАЯ КНОПКА (СПРАВА / СНИЗУ ПО ЦЕНТРУ ЭКРАНА)
+local MobileBoostBtn = Instance.new("speed")
+MobileBoostBtn.Size = UDim2.new(0, 90, 0, 90)
+MobileBoostBtn.Position = UDim2.new(0.5, -45, 0.8, 0) -- Ровно по центру снизу экрана телефона
+MobileBoostBtn.BackgroundColor3 = Color3.fromRGB(255, 152, 0)
+MobileBoostBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MobileBoostBtn.Font = Enum.Font.GothamBold
+MobileBoostBtn.TextSize = 16
+MobileBoostBtn.Visible = false -- Показывается только на смартфонах и если тумблер ВКЛ
+MobileBoostBtn.Parent = ScreenGui
+
+local MobCorner = Instance.new("UICorner")
+MobCorner.CornerRadius = UDim.new(1, 0) -- Идеально круглая форма кнопки
+MobCorner.Parent = MobileBoostBtn
+local MobStroke = Instance.new("UIStroke")
+MobStroke.Color = Color3.fromRGB(255, 255, 255)
+MobStroke.Thickness = 3
+MobStroke.Parent = MobileBoostBtn
+
+---------------------------------------------------------------------------------------
+-- 🔄 ФУНКЦИЯ ОБНОВЛЕНИЯ ЯЗЫКА И ТЕКСТОВ ИНТЕРФЕЙСА
+---------------------------------------------------------------------------------------
+local function updateUI()
+    local text = Localization[Config.Language]
+    
+    Header.Text = "   " .. text.Title
+    ToggleButton.Text = text.MainToggle .. (Config.Active and " [ON]" or " [OFF]")
+    SpeedLabel.Text = text.MaxSpeedText .. tostring(Config.MaxSpeed) .. " km/h"
+    AccelLabel.Text = text.AccelText .. tostring(Config.Acceleration) .. "%"
+    BoostButton.Text = text.InstantBoost
+    MobileBoostBtn.Text = text.MobileBtn
+    LangButton.Text = text.LangBtn
+    
+    if Config.BindingMode then
