@@ -1,0 +1,85 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
+
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local RootPart = Character:WaitForChild("HumanoidRootPart")
+
+local RayLength = 3.5 
+
+StarterGui:SetCore("SendNotification", {
+    Title = "🕷️ skazka spider",
+    Text = "Скрипт успешно активирован до перезахода!",
+    Duration = 4.5,
+    Icon = "rbxassetid://6034287515"
+})
+
+
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    Character = newChar
+    Humanoid = newChar:WaitForChild("Humanoid")
+    RootPart = newChar:WaitForChild("HumanoidRootPart")
+end)
+
+RunService.Heartbeat:Connect(function()
+    if not Character or not RootPart or not Humanoid then return end
+    if Humanoid.Health <= 0 then return end
+
+   
+    local Directions = {
+        RootPart.CFrame.LookVector,
+        -RootPart.CFrame.LookVector,
+        RootPart.CFrame.RightVector,
+        -RootPart.CFrame.RightVector,
+        RootPart.CFrame.UpVector
+    }
+
+    local Attached = false
+    local HitNormal = nil
+
+    local RayParams = RaycastParams.new()
+    RayParams.FilterDescendantsInstances = {Character}
+    RayParams.FilterType = Enum.RaycastFilterType.Exclude
+
+   
+    for _, dir in ipairs(Directions) do
+        local raycastResult = workspace:Raycast(RootPart.Position, dir * RayLength, RayParams)
+        if raycastResult then
+            Attached = true
+            HitNormal = raycastResult.Normal
+            break
+        end
+    end
+
+   
+    if Attached and HitNormal then
+        
+        Humanoid.PlatformStand = true
+        
+        local forward = RootPart.CFrame.LookVector
+        if math.abs(HitNormal:Dot(forward)) > 0.99 then
+            forward = RootPart.CFrame.UpVector
+        end
+        
+        local right = forward:Cross(HitNormal).Unit
+        local newForward = HitNormal:Cross(right).Unit
+        
+        
+        RootPart.CFrame = CFrame.fromMatrix(RootPart.Position, right, newForward, HitNormal)
+        
+        
+        local moveDirection = Humanoid.MoveDirection
+        if moveDirection.Magnitude > 0 then
+            RootPart.AssemblyLinearVelocity = moveDirection * 22 -- Скорость ползания по стенам
+        else
+            
+            RootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        end
+    else
+        if Humanoid.PlatformStand then
+            Humanoid.PlatformStand = false
+        end
+    end
+end)
